@@ -1,25 +1,38 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { db } from "@/src/lib/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
-
-const TEST_PROFILE = {
-  maskedName: "आ***",
-  bloodGroup: "B+",
-  allergies: "Penicillin",
-  medicalNotes: "Non-verbal, has autism",
-  guardians: [
-    { label: "Guardian १", phone: "+977-9800000001" },
-    { label: "Guardian २", phone: "+977-9800000002" },
-  ]
-};
+import { doc, getDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 
 export default function HelpPage() {
   const { id } = useParams();
   const [helped, setHelped] = useState(false);
-  const profile = TEST_PROFILE;
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    loadProfile();
+  }, []);
+
+  async function loadProfile() {
+    try {
+      const docRef = doc(db, "profiles", id);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        setProfile(docSnap.data());
+      } else {
+        setNotFound(true);
+      }
+    } catch (err) {
+      console.error(err);
+      setNotFound(true);
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function handleImHelping() {
     setHelped(true);
@@ -28,6 +41,18 @@ export default function HelpPage() {
       timestamp: serverTimestamp(),
     });
   }
+
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #fdf6ec 0%, #fdebd0 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif" }}>
+      <p style={{ color: "#e67e22", fontSize: "18px" }}>⏳ Loading...</p>
+    </div>
+  );
+
+  if (notFound) return (
+    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #fdf6ec 0%, #fdebd0 100%)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "sans-serif" }}>
+      <p style={{ color: "#c0392b", fontSize: "18px" }}>❌ Tag not found.</p>
+    </div>
+  );
 
   return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #fdf6ec 0%, #fdebd0 100%)", display: "flex", flexDirection: "column", alignItems: "center", padding: "24px 20px", fontFamily: "sans-serif" }}>
@@ -58,17 +83,24 @@ export default function HelpPage() {
           </div>
         </div>
 
-        <div style={{ background: "#f0f8ff", borderRadius: "12px", padding: "12px" }}>
-          <p style={{ fontSize: "12px", color: "#888", margin: "0 0 4px 0" }}>⚕️ Medical Notes</p>
-          <p style={{ fontSize: "14px", color: "#2c3e50", margin: 0 }}>{profile.medicalNotes}</p>
-        </div>
+        {profile.medicalNotes && (
+          <div style={{ background: "#f0f8ff", borderRadius: "12px", padding: "12px" }}>
+            <p style={{ fontSize: "12px", color: "#888", margin: "0 0 4px 0" }}>⚕️ Medical Notes</p>
+            <p style={{ fontSize: "14px", color: "#2c3e50", margin: 0 }}>{profile.medicalNotes}</p>
+          </div>
+        )}
       </div>
 
-      <div style={{ background: "white", borderRadius: "16px", padding: "20px", marginBottom: "16px", width: "100%", maxWidth: "360px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
-        <p style={{ fontSize: "15px", color: "#555", margin: "0 0 12px 0", textAlign: "center" }}>परिवारलाई सम्पर्क गर्नुहोस् / Contact Family</p>
-        <a href="tel:+9779849449844" style={{ display: "block", padding: "14px", marginBottom: "10px", background: "#e8f5e9", borderRadius: "12px", textAlign: "center", fontSize: "17px", fontWeight: "bold", color: "#27ae60", textDecoration: "none" }}>📞 Guardian १</a>
-        <a href="tel:+9779849464877" style={{ display: "block", padding: "14px", background: "#e8f5e9", borderRadius: "12px", textAlign: "center", fontSize: "17px", fontWeight: "bold", color: "#27ae60", textDecoration: "none" }}>📞 Guardian २</a>
-      </div>
+      {profile.guardians && profile.guardians.length > 0 && (
+        <div style={{ background: "white", borderRadius: "16px", padding: "20px", marginBottom: "16px", width: "100%", maxWidth: "360px", boxShadow: "0 2px 12px rgba(0,0,0,0.08)" }}>
+          <p style={{ fontSize: "15px", color: "#555", margin: "0 0 12px 0", textAlign: "center" }}>परिवारलाई सम्पर्क गर्नुहोस् / Contact Family</p>
+          {profile.guardians.map((g, i) => (
+            <a key={i} href={`tel:${g.phone}`} style={{ display: "block", padding: "14px", marginBottom: "10px", background: "#e8f5e9", borderRadius: "12px", textAlign: "center", fontSize: "17px", fontWeight: "bold", color: "#27ae60", textDecoration: "none" }}>
+              📞 Guardian {i + 1}
+            </a>
+          ))}
+        </div>
+      )}
 
       {!helped ? (
         <button onClick={handleImHelping} style={{ width: "100%", maxWidth: "360px", padding: "18px", fontSize: "20px", background: "#e67e22", color: "white", border: "none", borderRadius: "16px", cursor: "pointer", fontWeight: "bold", marginBottom: "16px" }}>

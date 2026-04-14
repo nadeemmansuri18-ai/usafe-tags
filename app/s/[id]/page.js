@@ -21,9 +21,27 @@ export default function ScannerPage() {
   const [gps, setGps] = useState(null);
 
   useEffect(() => {
-    startCamera();
-    captureGPS();
-  }, []);
+  startCamera();
+  captureGPS();
+  sendInstantAlert();
+    }, []);
+
+    async function sendInstantAlert() {
+      try {
+        await fetch("/api/scan-alert", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            tagId: id,
+            gps: null, // GPS not ready yet, will update later
+            photoUrl: null
+          })
+        });
+      } catch (err) {
+        // Silent fail — never show error to scanner
+        console.error(err);
+      }
+    }
 
   // Get finder's GPS location silently
   function captureGPS() {
@@ -74,6 +92,7 @@ export default function ScannerPage() {
       gps: gps || null,
       deviceInfo: navigator.userAgent,
     });
+    
 
     // Move to soothing page
     router.push(`/s/${id}/help?lat=${gps?.lat || ""}&lng=${gps?.lng || ""}`);
